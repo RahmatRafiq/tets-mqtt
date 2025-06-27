@@ -10,7 +10,7 @@ import (
 type SensorData struct {
 	ID          uint           `json:"id" gorm:"primarykey"`
 	DeviceID    string         `json:"device_id" gorm:"not null;index"`
-	KebunName   string         `json:"kebun_name" gorm:"not null"`
+	FarmName    string         `json:"farm_name" gorm:"not null"`
 	Nitrogen    float64        `json:"nitrogen"`    // N value
 	Phosphorus  float64        `json:"phosphorus"`  // P value
 	Potassium   float64        `json:"potassium"`   // K value
@@ -19,6 +19,7 @@ type SensorData struct {
 	PH          float64        `json:"ph"`          // Soil pH level
 	Latitude    float64        `json:"latitude"`
 	Longitude   float64        `json:"longitude"`
+	Location    string         `json:"location"`    // Section/area description
 	Timestamp   time.Time      `json:"timestamp" gorm:"not null"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
@@ -32,15 +33,17 @@ func (SensorData) TableName() string {
 
 // DeviceStatus represents the online/offline status of IoT devices
 type DeviceStatus struct {
-	ID             uint      `json:"id" gorm:"primarykey"`
-	DeviceID       string    `json:"device_id" gorm:"uniqueIndex;not null"`
-	KebunName      string    `json:"kebun_name" gorm:"not null"`
-	IsOnline       bool      `json:"is_online" gorm:"default:false"`
-	LastSeen       time.Time `json:"last_seen"`
-	BatteryLevel   int       `json:"battery_level"`   // Battery percentage
-	SignalStrength int       `json:"signal_strength"` // LoRa signal strength
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID              uint      `json:"id" gorm:"primarykey"`
+	DeviceID        string    `json:"device_id" gorm:"uniqueIndex;not null"`
+	FarmName        string    `json:"farm_name" gorm:"not null"`
+	IsOnline        bool      `json:"is_online" gorm:"default:false"`
+	LastSeen        time.Time `json:"last_seen"`
+	BatteryLevel    float64   `json:"battery_level"`    // Battery percentage
+	SignalStrength  int       `json:"signal_strength"`  // Signal strength in dBm
+	FirmwareVersion string    `json:"firmware_version"` // Device firmware version
+	Location        string    `json:"location"`         // Device location description
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // TableName sets the table name for GORM
@@ -50,16 +53,18 @@ func (DeviceStatus) TableName() string {
 
 // SensorAlert represents alerts based on sensor thresholds
 type SensorAlert struct {
-	ID         uint       `json:"id" gorm:"primarykey"`
-	DeviceID   string     `json:"device_id" gorm:"not null;index"`
-	KebunName  string     `json:"kebun_name" gorm:"not null"`
-	AlertType  string     `json:"alert_type" gorm:"not null"` // "npk_low", "ph_abnormal", "moisture_low", etc.
-	Message    string     `json:"message" gorm:"not null"`
-	Severity   string     `json:"severity" gorm:"not null"` // "low", "medium", "high", "critical"
-	IsResolved bool       `json:"is_resolved" gorm:"default:false"`
-	ResolvedAt *time.Time `json:"resolved_at"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	ID             uint       `json:"id" gorm:"primarykey"`
+	DeviceID       string     `json:"device_id" gorm:"not null;index"`
+	FarmName       string     `json:"farm_name" gorm:"not null"`
+	AlertType      string     `json:"alert_type" gorm:"not null"`      // "npk_low", "ph_abnormal", "moisture_low", etc.
+	Message        string     `json:"message" gorm:"not null"`
+	Severity       string     `json:"severity" gorm:"not null"`        // "low", "medium", "high", "critical"
+	SensorValue    *float64   `json:"sensor_value"`                    // Actual sensor value that triggered alert
+	ThresholdValue *float64   `json:"threshold_value"`                 // Threshold value that was exceeded
+	IsResolved     bool       `json:"is_resolved" gorm:"default:false"`
+	ResolvedAt     *time.Time `json:"resolved_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // TableName sets the table name for GORM

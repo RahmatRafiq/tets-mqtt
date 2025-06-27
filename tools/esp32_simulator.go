@@ -13,29 +13,33 @@ import (
 
 // SensorPayload represents the structure of data sent from ESP32 sensors
 type SensorPayload struct {
-	DeviceID       string  `json:"device_id"`
-	KebunName      string  `json:"kebun_name"`
-	Nitrogen       float64 `json:"nitrogen"`
-	Phosphorus     float64 `json:"phosphorus"`
-	Potassium      float64 `json:"potassium"`
-	Temperature    float64 `json:"temperature"`
-	Humidity       float64 `json:"humidity"`
-	pH             float64 `json:"ph"`
-	Latitude       float64 `json:"latitude"`
-	Longitude      float64 `json:"longitude"`
-	BatteryLevel   int     `json:"battery_level"`
-	SignalStrength int     `json:"signal_strength"`
-	Timestamp      int64   `json:"timestamp"`
+	DeviceID        string  `json:"device_id"`
+	FarmName        string  `json:"farm_name"`
+	Nitrogen        float64 `json:"nitrogen"`
+	Phosphorus      float64 `json:"phosphorus"`
+	Potassium       float64 `json:"potassium"`
+	Temperature     float64 `json:"temperature"`
+	Humidity        float64 `json:"humidity"`
+	pH              float64 `json:"ph"`
+	Latitude        float64 `json:"latitude"`
+	Longitude       float64 `json:"longitude"`
+	Location        string  `json:"location"`
+	BatteryLevel    float64 `json:"battery_level"`
+	SignalStrength  int     `json:"signal_strength"`
+	FirmwareVersion string  `json:"firmware_version"`
+	Timestamp       int64   `json:"timestamp"`
 }
 
 // StatusPayload represents device status updates
 type StatusPayload struct {
-	DeviceID       string `json:"device_id"`
-	KebunName      string `json:"kebun_name"`
-	IsOnline       bool   `json:"is_online"`
-	BatteryLevel   int    `json:"battery_level"`
-	SignalStrength int    `json:"signal_strength"`
-	Timestamp      int64  `json:"timestamp"`
+	DeviceID        string  `json:"device_id"`
+	FarmName        string  `json:"farm_name"`
+	IsOnline        bool    `json:"is_online"`
+	BatteryLevel    float64 `json:"battery_level"`
+	SignalStrength  int     `json:"signal_strength"`
+	FirmwareVersion string  `json:"firmware_version"`
+	Location        string  `json:"location"`
+	Timestamp       int64   `json:"timestamp"`
 }
 
 func main() {
@@ -62,19 +66,19 @@ func main() {
 
 	// Simulate multiple devices
 	devices := []struct {
-		ID        string
-		KebunName string
-		Lat       float64
-		Lng       float64
+		ID       string
+		FarmName string
+		Lat      float64
+		Lng      float64
 	}{
-		{"ESP32_001", "Kebun A", -7.250445, 112.768845},
-		{"ESP32_002", "Kebun B", -7.251234, 112.769876},
-		{"ESP32_003", "Kebun C", -7.252567, 112.771234},
+		{"ESP32_001", "Farm_A", -7.250445, 112.768845},
+		{"ESP32_002", "Farm_B", -7.251234, 112.769876},
+		{"ESP32_003", "Farm_C", -7.252567, 112.771234},
 	}
 
 	// Send initial device status
 	for _, device := range devices {
-		sendDeviceStatus(client, device.ID, device.KebunName, true)
+		sendDeviceStatus(client, device.ID, device.FarmName, true)
 		time.Sleep(1 * time.Second)
 	}
 
@@ -86,29 +90,31 @@ func main() {
 		select {
 		case <-ticker.C:
 			for _, device := range devices {
-				sendSensorData(client, device.ID, device.KebunName, device.Lat, device.Lng)
+				sendSensorData(client, device.ID, device.FarmName, device.Lat, device.Lng)
 				time.Sleep(2 * time.Second) // Stagger the sends
 			}
 		}
 	}
 }
 
-func sendSensorData(client mqtt.Client, deviceID, kebunName string, lat, lng float64) {
+func sendSensorData(client mqtt.Client, deviceID, farmName string, lat, lng float64) {
 	// Generate realistic sensor data for sugar cane
 	payload := SensorPayload{
-		DeviceID:       deviceID,
-		KebunName:      kebunName,
-		Nitrogen:       generateRealisticValue(15, 35, 25),    // Optimal: 20-30 mg/kg
-		Phosphorus:     generateRealisticValue(10, 25, 18),    // Optimal: 15-20 mg/kg
-		Potassium:      generateRealisticValue(120, 200, 160), // Optimal: 150-180 mg/kg
-		Temperature:    generateRealisticValue(25, 32, 28),    // Tropical temperature
-		Humidity:       generateRealisticValue(60, 80, 70),    // Soil humidity %
-		pH:             generateRealisticValue(5.5, 8.5, 6.8), // Optimal: 6.0-8.0
-		Latitude:       lat + (rand.Float64()-0.5)*0.001,      // Small variations
-		Longitude:      lng + (rand.Float64()-0.5)*0.001,      // Small variations
-		BatteryLevel:   rand.Intn(40) + 60,                    // 60-100%
-		SignalStrength: rand.Intn(30) - 85,                    // -85 to -55 dBm
-		Timestamp:      time.Now().Unix(),
+		DeviceID:        deviceID,
+		FarmName:        farmName,
+		Nitrogen:        generateRealisticValue(15, 35, 25),    // Optimal: 20-30 mg/kg
+		Phosphorus:      generateRealisticValue(10, 25, 18),    // Optimal: 15-20 mg/kg
+		Potassium:       generateRealisticValue(120, 200, 160), // Optimal: 150-180 mg/kg
+		Temperature:     generateRealisticValue(25, 32, 28),    // Tropical temperature
+		Humidity:        generateRealisticValue(60, 80, 70),    // Soil humidity %
+		pH:              generateRealisticValue(5.5, 8.5, 6.8), // Optimal: 6.0-8.0
+		Latitude:        lat + (rand.Float64()-0.5)*0.001,      // Small variations
+		Longitude:       lng + (rand.Float64()-0.5)*0.001,      // Small variations
+		Location:        fmt.Sprintf("Section %s-%d", farmName[len(farmName)-1:], rand.Intn(5)+1),
+		BatteryLevel:    float64(rand.Intn(40) + 60),           // 60-100%
+		SignalStrength:  rand.Intn(30) - 85,                    // -85 to -55 dBm
+		FirmwareVersion: "v1.2.3",
+		Timestamp:       time.Now().Unix(),
 	}
 
 	// Occasionally generate alert conditions
@@ -139,17 +145,19 @@ func sendSensorData(client mqtt.Client, deviceID, kebunName string, lat, lng flo
 	}
 
 	fmt.Printf("📊 Sent sensor data from %s (%s): N=%.1f, P=%.1f, K=%.1f, pH=%.1f\n",
-		deviceID, kebunName, payload.Nitrogen, payload.Phosphorus, payload.Potassium, payload.pH)
+		deviceID, farmName, payload.Nitrogen, payload.Phosphorus, payload.Potassium, payload.pH)
 }
 
-func sendDeviceStatus(client mqtt.Client, deviceID, kebunName string, isOnline bool) {
+func sendDeviceStatus(client mqtt.Client, deviceID, farmName string, isOnline bool) {
 	payload := StatusPayload{
-		DeviceID:       deviceID,
-		KebunName:      kebunName,
-		IsOnline:       isOnline,
-		BatteryLevel:   rand.Intn(40) + 60, // 60-100%
-		SignalStrength: rand.Intn(30) - 85, // -85 to -55 dBm
-		Timestamp:      time.Now().Unix(),
+		DeviceID:        deviceID,
+		FarmName:        farmName,
+		IsOnline:        isOnline,
+		BatteryLevel:    float64(rand.Intn(40) + 60), // 60-100%
+		SignalStrength:  rand.Intn(30) - 85,          // -85 to -55 dBm
+		FirmwareVersion: "v1.2.3",
+		Location:        fmt.Sprintf("Section %s-%d", farmName[len(farmName)-1:], rand.Intn(5)+1),
+		Timestamp:       time.Now().Unix(),
 	}
 
 	jsonData, err := json.Marshal(payload)
@@ -169,7 +177,7 @@ func sendDeviceStatus(client mqtt.Client, deviceID, kebunName string, isOnline b
 	if !isOnline {
 		status = "🔴 Offline"
 	}
-	fmt.Printf("📡 Device %s (%s): %s\n", deviceID, kebunName, status)
+	fmt.Printf("📡 Device %s (%s): %s\n", deviceID, farmName, status)
 }
 
 func generateRealisticValue(min, max, center float64) float64 {

@@ -18,12 +18,12 @@ type SensorController struct{}
 
 // GetSensorData gets sensor data with filtering options
 // @Summary Get sensor data
-// @Description Retrieve sensor data with optional filtering by device, kebun, and time range
+// @Description Retrieve sensor data with optional filtering by device, farm, and time range
 // @Tags sensor
 // @Accept json
 // @Produce json
 // @Param device_id query string false "Device ID filter"
-// @Param kebun_name query string false "Kebun name filter"
+// @Param farm_name query string false "Farm name filter"
 // @Param start_date query string false "Start date (YYYY-MM-DD)"
 // @Param end_date query string false "End date (YYYY-MM-DD)"
 // @Param limit query int false "Limit results" default(50)
@@ -40,8 +40,8 @@ func (sc *SensorController) GetSensorData(c *gin.Context) {
 		query = query.Where("device_id = ?", deviceID)
 	}
 
-	if kebunName := c.Query("kebun_name"); kebunName != "" {
-		query = query.Where("kebun_name = ?", kebunName)
+	if farmName := c.Query("farm_name"); farmName != "" {
+		query = query.Where("farm_name = ?", farmName)
 	}
 
 	if startDate := c.Query("start_date"); startDate != "" {
@@ -216,8 +216,8 @@ func (sc *SensorController) GetSensorAlerts(c *gin.Context) {
 		query = query.Where("device_id = ?", deviceID)
 	}
 
-	if kebunName := c.Query("kebun_name"); kebunName != "" {
-		query = query.Where("kebun_name = ?", kebunName)
+	if farmName := c.Query("farm_name"); farmName != "" {
+		query = query.Where("farm_name = ?", farmName)
 	}
 
 	if severity := c.Query("severity"); severity != "" {
@@ -295,8 +295,8 @@ func (sc *SensorController) GetSensorStatistics(c *gin.Context) {
 		query = query.Where("device_id = ?", deviceID)
 	}
 
-	if kebunName := c.Query("kebun_name"); kebunName != "" {
-		query = query.Where("kebun_name = ?", kebunName)
+	if farmName := c.Query("farm_name"); farmName != "" {
+		query = query.Where("farm_name = ?", farmName)
 	}
 
 	if startDate := c.Query("start_date"); startDate != "" {

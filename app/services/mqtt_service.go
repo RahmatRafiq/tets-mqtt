@@ -23,29 +23,33 @@ type MQTTService struct {
 
 // SensorPayload represents the structure of data received from ESP32 sensors
 type SensorPayload struct {
-	DeviceID       string  `json:"device_id"`
-	KebunName      string  `json:"kebun_name"`
-	Nitrogen       float64 `json:"nitrogen"`
-	Phosphorus     float64 `json:"phosphorus"`
-	Potassium      float64 `json:"potassium"`
-	Temperature    float64 `json:"temperature"`
-	Humidity       float64 `json:"humidity"`
-	pH             float64 `json:"ph"`
-	Latitude       float64 `json:"latitude"`
-	Longitude      float64 `json:"longitude"`
-	BatteryLevel   int     `json:"battery_level"`
-	SignalStrength int     `json:"signal_strength"`
-	Timestamp      int64   `json:"timestamp"`
+	DeviceID         string  `json:"device_id"`
+	FarmName         string  `json:"farm_name"`
+	Nitrogen         float64 `json:"nitrogen"`
+	Phosphorus       float64 `json:"phosphorus"`
+	Potassium        float64 `json:"potassium"`
+	Temperature      float64 `json:"temperature"`
+	Humidity         float64 `json:"humidity"`
+	pH               float64 `json:"ph"`
+	Latitude         float64 `json:"latitude"`
+	Longitude        float64 `json:"longitude"`
+	Location         string  `json:"location"`
+	BatteryLevel     float64 `json:"battery_level"`
+	SignalStrength   int     `json:"signal_strength"`
+	FirmwareVersion  string  `json:"firmware_version"`
+	Timestamp        int64   `json:"timestamp"`
 }
 
 // StatusPayload represents device status updates
 type StatusPayload struct {
-	DeviceID       string `json:"device_id"`
-	KebunName      string `json:"kebun_name"`
-	IsOnline       bool   `json:"is_online"`
-	BatteryLevel   int    `json:"battery_level"`
-	SignalStrength int    `json:"signal_strength"`
-	Timestamp      int64  `json:"timestamp"`
+	DeviceID        string  `json:"device_id"`
+	FarmName        string  `json:"farm_name"`
+	IsOnline        bool    `json:"is_online"`
+	BatteryLevel    float64 `json:"battery_level"`
+	SignalStrength  int     `json:"signal_strength"`
+	FirmwareVersion string  `json:"firmware_version"`
+	Location        string  `json:"location"`
+	Timestamp       int64   `json:"timestamp"`
 }
 
 var mqttServiceInstance *MQTTService
@@ -142,7 +146,7 @@ func (m *MQTTService) handleSensorData(client mqtt.Client, msg mqtt.Message) {
 	// Save sensor data to database
 	sensorData := models.SensorData{
 		DeviceID:    payload.DeviceID,
-		KebunName:   payload.KebunName,
+		FarmName:    payload.FarmName,
 		Nitrogen:    payload.Nitrogen,
 		Phosphorus:  payload.Phosphorus,
 		Potassium:   payload.Potassium,
@@ -151,6 +155,7 @@ func (m *MQTTService) handleSensorData(client mqtt.Client, msg mqtt.Message) {
 		PH:          payload.pH,
 		Latitude:    payload.Latitude,
 		Longitude:   payload.Longitude,
+		Location:    payload.Location,
 		Timestamp:   time.Unix(payload.Timestamp, 0),
 	}
 
@@ -161,12 +166,12 @@ func (m *MQTTService) handleSensorData(client mqtt.Client, msg mqtt.Message) {
 	}
 
 	// Update device status
-	m.updateDeviceStatus(payload.DeviceID, payload.KebunName, true, payload.BatteryLevel, payload.SignalStrength)
+	m.updateDeviceStatus(payload.DeviceID, payload.FarmName, true, payload.BatteryLevel, payload.SignalStrength, payload.FirmwareVersion, payload.Location)
 
 	// Check for alerts
 	m.checkSensorAlerts(&sensorData)
 
-	log.Printf("Sensor data saved for device %s in %s", payload.DeviceID, payload.KebunName)
+	log.Printf("Sensor data saved for device %s in %s", payload.DeviceID, payload.FarmName)
 }
 
 // handleDeviceStatus processes device status updates
@@ -179,7 +184,7 @@ func (m *MQTTService) handleDeviceStatus(client mqtt.Client, msg mqtt.Message) {
 		return
 	}
 
-	m.updateDeviceStatus(payload.DeviceID, payload.KebunName, payload.IsOnline, payload.BatteryLevel, payload.SignalStrength)
+	m.updateDeviceStatus(payload.DeviceID, payload.FarmName, payload.IsOnline, payload.BatteryLevel, payload.SignalStrength, payload.FirmwareVersion, payload.Location)
 }
 
 // handleDeviceAlert processes device alerts
@@ -191,7 +196,7 @@ func (m *MQTTService) handleDeviceAlert(client mqtt.Client, msg mqtt.Message) {
 }
 
 // updateDeviceStatus updates or creates device status record
-func (m *MQTTService) updateDeviceStatus(deviceID, kebunName string, isOnline bool, batteryLevel, signalStrength int) {
+func (m *MQTTService) updateDeviceStatus(deviceID, farmName string, isOnline bool, batteryLevel float64, signalStrength int, firmwareVersion, location string) {
 	db := facades.DB
 
 	var deviceStatus models.DeviceStatus
@@ -200,21 +205,25 @@ func (m *MQTTService) updateDeviceStatus(deviceID, kebunName string, isOnline bo
 	if result.Error != nil {
 		// Create new device status
 		deviceStatus = models.DeviceStatus{
-			DeviceID:       deviceID,
-			KebunName:      kebunName,
-			IsOnline:       isOnline,
-			LastSeen:       time.Now(),
-			BatteryLevel:   batteryLevel,
-			SignalStrength: signalStrength,
+			DeviceID:        deviceID,
+			FarmName:        farmName,
+			IsOnline:        isOnline,
+			LastSeen:        time.Now(),
+			BatteryLevel:    batteryLevel,
+			SignalStrength:  signalStrength,
+			FirmwareVersion: firmwareVersion,
+			Location:        location,
 		}
 		db.Create(&deviceStatus)
 	} else {
 		// Update existing device status
 		db.Model(&deviceStatus).Updates(models.DeviceStatus{
-			IsOnline:       isOnline,
-			LastSeen:       time.Now(),
-			BatteryLevel:   batteryLevel,
-			SignalStrength: signalStrength,
+			IsOnline:        isOnline,
+			LastSeen:        time.Now(),
+			BatteryLevel:    batteryLevel,
+			SignalStrength:  signalStrength,
+			FirmwareVersion: firmwareVersion,
+			Location:        location,
 		})
 	}
 }
@@ -228,31 +237,37 @@ func (m *MQTTService) checkSensorAlerts(data *models.SensorData) {
 	// Check NPK levels (example thresholds)
 	if data.Nitrogen < 20 {
 		alerts = append(alerts, models.SensorAlert{
-			DeviceID:  data.DeviceID,
-			KebunName: data.KebunName,
-			AlertType: "nitrogen_low",
-			Message:   fmt.Sprintf("Nitrogen level too low: %.2f mg/kg", data.Nitrogen),
-			Severity:  "medium",
+			DeviceID:       data.DeviceID,
+			FarmName:       data.FarmName,
+			AlertType:      "nitrogen_low",
+			Message:        fmt.Sprintf("Nitrogen level too low: %.2f mg/kg", data.Nitrogen),
+			Severity:       "medium",
+			SensorValue:    &data.Nitrogen,
+			ThresholdValue: func() *float64 { v := 20.0; return &v }(),
 		})
 	}
 
 	if data.Phosphorus < 15 {
 		alerts = append(alerts, models.SensorAlert{
-			DeviceID:  data.DeviceID,
-			KebunName: data.KebunName,
-			AlertType: "phosphorus_low",
-			Message:   fmt.Sprintf("Phosphorus level too low: %.2f mg/kg", data.Phosphorus),
-			Severity:  "medium",
+			DeviceID:       data.DeviceID,
+			FarmName:       data.FarmName,
+			AlertType:      "phosphorus_low",
+			Message:        fmt.Sprintf("Phosphorus level too low: %.2f mg/kg", data.Phosphorus),
+			Severity:       "medium",
+			SensorValue:    &data.Phosphorus,
+			ThresholdValue: func() *float64 { v := 15.0; return &v }(),
 		})
 	}
 
 	if data.Potassium < 150 {
 		alerts = append(alerts, models.SensorAlert{
-			DeviceID:  data.DeviceID,
-			KebunName: data.KebunName,
-			AlertType: "potassium_low",
-			Message:   fmt.Sprintf("Potassium level too low: %.2f mg/kg", data.Potassium),
-			Severity:  "medium",
+			DeviceID:       data.DeviceID,
+			FarmName:       data.FarmName,
+			AlertType:      "potassium_low",
+			Message:        fmt.Sprintf("Potassium level too low: %.2f mg/kg", data.Potassium),
+			Severity:       "medium",
+			SensorValue:    &data.Potassium,
+			ThresholdValue: func() *float64 { v := 150.0; return &v }(),
 		})
 	}
 
@@ -262,12 +277,18 @@ func (m *MQTTService) checkSensorAlerts(data *models.SensorData) {
 		if data.PH < 5.5 || data.PH > 8.5 {
 			severity = "high"
 		}
+		thresholdValue := 6.0
+		if data.PH > 8.0 {
+			thresholdValue = 8.0
+		}
 		alerts = append(alerts, models.SensorAlert{
-			DeviceID:  data.DeviceID,
-			KebunName: data.KebunName,
-			AlertType: "ph_abnormal",
-			Message:   fmt.Sprintf("pH level abnormal: %.2f", data.PH),
-			Severity:  severity,
+			DeviceID:       data.DeviceID,
+			FarmName:       data.FarmName,
+			AlertType:      "ph_abnormal",
+			Message:        fmt.Sprintf("pH level abnormal: %.2f", data.PH),
+			Severity:       severity,
+			SensorValue:    &data.PH,
+			ThresholdValue: &thresholdValue,
 		})
 	}
 
