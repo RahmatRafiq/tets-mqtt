@@ -20,10 +20,15 @@ import (
 )
 
 func Init() {
+	// Load environment variables
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
+
+	// Initialize environment for MQTT
+	InitializeEnvironment()
+
 	facades.ConnectDB()
 	defer facades.CloseDB()
 
@@ -53,6 +58,9 @@ func Init() {
 
 	r := gin.Default()
 	facades.ConnectDB()
+
+	// Initialize MQTT service
+	InitializeMQTT()
 
 	defer facades.CloseDB()
 
