@@ -19,6 +19,19 @@ func RegisterRoutes(route *gin.Engine) {
 	controller := controllers.Controller{}
 	route.GET("", controller.HelloWorld)
 
+	// MQTT Sensor routes
+	sensorController := controllers.SensorController{}
+	sensorRoutes := route.Group("/api/sensor")
+	{
+		sensorRoutes.GET("/data", sensorController.GetSensorData)
+		sensorRoutes.GET("/latest", sensorController.GetLatestSensorData)
+		sensorRoutes.GET("/devices/status", sensorController.GetDeviceStatus)
+		sensorRoutes.POST("/devices/:device_id/command", sensorController.SendDeviceCommand)
+		sensorRoutes.GET("/alerts", sensorController.GetSensorAlerts)
+		sensorRoutes.PUT("/alerts/:id/resolve", sensorController.ResolveAlert)
+		sensorRoutes.GET("/statistics", sensorController.GetSensorStatistics)
+	}
+
 	// Public route: Login and Logout (no auth required)
 	authService := services.AuthService{}
 	authController := controllers.NewAuthController(authService)
