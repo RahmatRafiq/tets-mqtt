@@ -6,11 +6,11 @@ import (
 
 type SensorAlert struct {
 	ID             uint       `json:"id" gorm:"primarykey"`
-	DeviceID       string     `json:"device_id" gorm:"not null;index"`
-	FarmName       string     `json:"farm_name" gorm:"not null"`
-	AlertType      string     `json:"alert_type" gorm:"not null"`
-	Message        string     `json:"message" gorm:"not null"`
-	Severity       string     `json:"severity" gorm:"not null"`
+	DeviceID       string     `json:"device_id" gorm:"type:varchar(100);not null;index"`
+	FarmName       string     `json:"farm_name" gorm:"type:varchar(255);not null"`
+	AlertType      string     `json:"alert_type" gorm:"type:varchar(100);not null"`
+	Message        string     `json:"message" gorm:"type:text;not null"`
+	Severity       string     `json:"severity" gorm:"type:varchar(50);not null"`
 	SensorValue    *float64   `json:"sensor_value"`
 	ThresholdValue *float64   `json:"threshold_value"`
 	IsResolved     bool       `json:"is_resolved" gorm:"default:false"`

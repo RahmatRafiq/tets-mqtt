@@ -138,6 +138,14 @@ func (sc *SensorController) GetLatestSensorData(c *gin.Context) {
 }
 
 // GetDeviceStatus gets device status information
+// @Summary Get device status
+// @Description Retrieve device status information with optional device ID filter
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param device_id query string false "Device ID filter"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/sensor/devices/status [get]
 func (sc *SensorController) GetDeviceStatus(c *gin.Context) {
 	var deviceStatus []models.DeviceStatus
 
@@ -164,6 +172,17 @@ func (sc *SensorController) GetDeviceStatus(c *gin.Context) {
 }
 
 // SendDeviceCommand sends a command to a specific device via MQTT
+// @Summary Send command to device
+// @Description Send a command to a specific IoT device via MQTT protocol
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param device_id path string true "Device ID"
+// @Param request body requests.DeviceCommandRequest true "Device command request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Router /api/sensor/devices/{device_id}/command [post]
 func (sc *SensorController) SendDeviceCommand(c *gin.Context) {
 	deviceID := c.Param("device_id")
 
@@ -206,6 +225,19 @@ func (sc *SensorController) SendDeviceCommand(c *gin.Context) {
 }
 
 // GetSensorAlerts gets sensor alerts with filtering options
+// @Summary Get sensor alerts
+// @Description Retrieve sensor alerts with optional filtering by device, farm, severity, and resolution status
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param device_id query string false "Device ID filter"
+// @Param farm_name query string false "Farm name filter"
+// @Param severity query string false "Alert severity filter"
+// @Param is_resolved query boolean false "Filter by resolution status"
+// @Param limit query int false "Limit results" default(50)
+// @Param offset query int false "Offset results" default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /api/sensor/alerts [get]
 func (sc *SensorController) GetSensorAlerts(c *gin.Context) {
 	var alerts []models.SensorAlert
 
@@ -255,6 +287,15 @@ func (sc *SensorController) GetSensorAlerts(c *gin.Context) {
 }
 
 // ResolveAlert marks an alert as resolved
+// @Summary Resolve sensor alert
+// @Description Mark a specific sensor alert as resolved by alert ID
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param id path string true "Alert ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/sensor/alerts/{id}/resolve [put]
 func (sc *SensorController) ResolveAlert(c *gin.Context) {
 	alertID := c.Param("id")
 
@@ -287,6 +328,17 @@ func (sc *SensorController) ResolveAlert(c *gin.Context) {
 }
 
 // GetSensorStatistics gets aggregated sensor statistics
+// @Summary Get sensor statistics
+// @Description Retrieve aggregated sensor statistics including averages, min/max values, and total readings
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param device_id query string false "Device ID filter"
+// @Param farm_name query string false "Farm name filter"
+// @Param start_date query string false "Start date (YYYY-MM-DD)"
+// @Param end_date query string false "End date (YYYY-MM-DD)"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/sensor/statistics [get]
 func (sc *SensorController) GetSensorStatistics(c *gin.Context) {
 	query := facades.DB.Model(&models.SensorData{})
 
@@ -354,5 +406,208 @@ func (sc *SensorController) GetSensorStatistics(c *gin.Context) {
 		"status":  "success",
 		"message": "Sensor statistics retrieved successfully",
 		"data":    stats,
+	})
+}
+
+// GetSensorDataJSON gets sensor data with JSON body filtering options
+// @Summary Get sensor data with JSON input
+// @Description Retrieve sensor data with filtering options via JSON body request
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param request body requests.SensorDataFilterRequest true "Sensor data filter request"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/sensor/data-json [post]
+func (sc *SensorController) GetSensorDataJSON(c *gin.Context) {
+	var filterRequest requests.SensorDataFilterRequest
+
+	// Set default values
+	filterRequest.Limit = 50
+	filterRequest.Offset = 0
+
+	// Bind JSON request body
+	if err := c.ShouldBindJSON(&filterRequest); err != nil {
+		helpers.ResponseError(c, &helpers.ResponseParams[any]{
+			Message: "Invalid request format",
+			Errors:  map[string]string{"error": err.Error()},
+		}, http.StatusBadRequest)
+		return
+	}
+
+	var sensorData []models.SensorData
+	query := facades.DB.Model(&models.SensorData{})
+
+	// Apply filters from JSON request
+	if filterRequest.DeviceID != "" {
+		query = query.Where("device_id = ?", filterRequest.DeviceID)
+	}
+
+	if filterRequest.FarmName != "" {
+		query = query.Where("farm_name = ?", filterRequest.FarmName)
+	}
+
+	if filterRequest.StartDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.StartDate); err == nil {
+			query = query.Where("timestamp >= ?", parsedDate)
+		}
+	}
+
+	if filterRequest.EndDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.EndDate); err == nil {
+			query = query.Where("timestamp <= ?", parsedDate.Add(24*time.Hour))
+		}
+	}
+
+	// Set default limit and offset if not provided
+	if filterRequest.Limit <= 0 {
+		filterRequest.Limit = 50
+	}
+	if filterRequest.Offset < 0 {
+		filterRequest.Offset = 0
+	}
+
+	query = query.Limit(filterRequest.Limit).Offset(filterRequest.Offset).Order("timestamp DESC")
+
+	if err := query.Find(&sensorData).Error; err != nil {
+		helpers.ResponseError(c, &helpers.ResponseParams[any]{
+			Message: "Failed to retrieve sensor data",
+			Errors:  map[string]string{"error": err.Error()},
+		}, http.StatusInternalServerError)
+		return
+	}
+
+	// Get total count for pagination
+	var totalCount int64
+	countQuery := facades.DB.Model(&models.SensorData{})
+
+	// Apply same filters for count
+	if filterRequest.DeviceID != "" {
+		countQuery = countQuery.Where("device_id = ?", filterRequest.DeviceID)
+	}
+	if filterRequest.FarmName != "" {
+		countQuery = countQuery.Where("farm_name = ?", filterRequest.FarmName)
+	}
+	if filterRequest.StartDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.StartDate); err == nil {
+			countQuery = countQuery.Where("timestamp >= ?", parsedDate)
+		}
+	}
+	if filterRequest.EndDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.EndDate); err == nil {
+			countQuery = countQuery.Where("timestamp <= ?", parsedDate.Add(24*time.Hour))
+		}
+	}
+
+	countQuery.Count(&totalCount)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":   "success",
+		"message":  "Sensor data retrieved successfully",
+		"data":     sensorData,
+		"count":    len(sensorData),
+		"total":    totalCount,
+		"limit":    filterRequest.Limit,
+		"offset":   filterRequest.Offset,
+		"has_more": (filterRequest.Offset + len(sensorData)) < int(totalCount),
+		"pagination": gin.H{
+			"current_page": (filterRequest.Offset / filterRequest.Limit) + 1,
+			"total_pages":  (int(totalCount) + filterRequest.Limit - 1) / filterRequest.Limit,
+		},
+	})
+}
+
+// GetSensorStatisticsJSON gets aggregated sensor statistics with JSON input
+// @Summary Get sensor statistics with JSON input
+// @Description Retrieve aggregated sensor statistics with filtering options via JSON body request
+// @Tags sensor
+// @Accept json
+// @Produce json
+// @Param request body requests.SensorDataFilterRequest true "Sensor statistics filter request"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/sensor/statistics-json [post]
+func (sc *SensorController) GetSensorStatisticsJSON(c *gin.Context) {
+	var filterRequest requests.SensorDataFilterRequest
+
+	// Bind JSON request body
+	if err := c.ShouldBindJSON(&filterRequest); err != nil {
+		helpers.ResponseError(c, &helpers.ResponseParams[any]{
+			Message: "Invalid request format",
+			Errors:  map[string]string{"error": err.Error()},
+		}, http.StatusBadRequest)
+		return
+	}
+
+	query := facades.DB.Model(&models.SensorData{})
+
+	// Apply filters from JSON request
+	if filterRequest.DeviceID != "" {
+		query = query.Where("device_id = ?", filterRequest.DeviceID)
+	}
+
+	if filterRequest.FarmName != "" {
+		query = query.Where("farm_name = ?", filterRequest.FarmName)
+	}
+
+	if filterRequest.StartDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.StartDate); err == nil {
+			query = query.Where("timestamp >= ?", parsedDate)
+		}
+	}
+
+	if filterRequest.EndDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", filterRequest.EndDate); err == nil {
+			query = query.Where("timestamp <= ?", parsedDate.Add(24*time.Hour))
+		}
+	}
+
+	type SensorStats struct {
+		AvgNitrogen    float64 `json:"avg_nitrogen"`
+		AvgPhosphorus  float64 `json:"avg_phosphorus"`
+		AvgPotassium   float64 `json:"avg_potassium"`
+		AvgTemperature float64 `json:"avg_temperature"`
+		AvgHumidity    float64 `json:"avg_humidity"`
+		AvgPH          float64 `json:"avg_ph"`
+		MinNitrogen    float64 `json:"min_nitrogen"`
+		MaxNitrogen    float64 `json:"max_nitrogen"`
+		MinPhosphorus  float64 `json:"min_phosphorus"`
+		MaxPhosphorus  float64 `json:"max_phosphorus"`
+		MinPotassium   float64 `json:"min_potassium"`
+		MaxPotassium   float64 `json:"max_potassium"`
+		TotalReadings  int64   `json:"total_readings"`
+	}
+
+	var stats SensorStats
+	if err := query.Select(`
+		AVG(nitrogen) as avg_nitrogen,
+		AVG(phosphorus) as avg_phosphorus,
+		AVG(potassium) as avg_potassium,
+		AVG(temperature) as avg_temperature,
+		AVG(humidity) as avg_humidity,
+		AVG(ph) as avg_ph,
+		MIN(nitrogen) as min_nitrogen,
+		MAX(nitrogen) as max_nitrogen,
+		MIN(phosphorus) as min_phosphorus,
+		MAX(phosphorus) as max_phosphorus,
+		MIN(potassium) as min_potassium,
+		MAX(potassium) as max_potassium,
+		COUNT(*) as total_readings
+	`).Scan(&stats).Error; err != nil {
+		helpers.ResponseError(c, &helpers.ResponseParams[any]{
+			Message: "Failed to retrieve statistics",
+			Errors:  map[string]string{"error": err.Error()},
+		}, http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Sensor statistics retrieved successfully",
+		"data":    stats,
+		"filters": gin.H{
+			"device_id":  filterRequest.DeviceID,
+			"farm_name":  filterRequest.FarmName,
+			"start_date": filterRequest.StartDate,
+			"end_date":   filterRequest.EndDate,
+		},
 	})
 }

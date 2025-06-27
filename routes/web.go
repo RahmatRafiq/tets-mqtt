@@ -24,12 +24,14 @@ func RegisterRoutes(route *gin.Engine) {
 	sensorRoutes := route.Group("/api/sensor")
 	{
 		sensorRoutes.GET("/data", sensorController.GetSensorData)
+		sensorRoutes.POST("/data-json", sensorController.GetSensorDataJSON) // New JSON endpoint
 		sensorRoutes.GET("/latest", sensorController.GetLatestSensorData)
 		sensorRoutes.GET("/devices/status", sensorController.GetDeviceStatus)
 		sensorRoutes.POST("/devices/:device_id/command", sensorController.SendDeviceCommand)
 		sensorRoutes.GET("/alerts", sensorController.GetSensorAlerts)
 		sensorRoutes.PUT("/alerts/:id/resolve", sensorController.ResolveAlert)
 		sensorRoutes.GET("/statistics", sensorController.GetSensorStatistics)
+		sensorRoutes.POST("/statistics-json", sensorController.GetSensorStatisticsJSON) // New JSON endpoint for statistics
 	}
 
 	// Public route: Login and Logout (no auth required)

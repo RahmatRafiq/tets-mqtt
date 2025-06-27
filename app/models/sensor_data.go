@@ -9,8 +9,8 @@ import (
 // SensorData represents NPK sensor readings from ESP32 devices
 type SensorData struct {
 	ID          uint           `json:"id" gorm:"primarykey"`
-	DeviceID    string         `json:"device_id" gorm:"not null;index"`
-	FarmName    string         `json:"farm_name" gorm:"not null"`
+	DeviceID    string         `json:"device_id" gorm:"type:varchar(100);not null;index"`
+	FarmName    string         `json:"farm_name" gorm:"type:varchar(255);not null;index"`
 	Nitrogen    float64        `json:"nitrogen"`
 	Phosphorus  float64        `json:"phosphorus"`
 	Potassium   float64        `json:"potassium"`
@@ -19,8 +19,8 @@ type SensorData struct {
 	PH          float64        `json:"ph"`
 	Latitude    float64        `json:"latitude"`
 	Longitude   float64        `json:"longitude"`
-	Location    string         `json:"location"`
-	Timestamp   time.Time      `json:"timestamp" gorm:"not null"`
+	Location    string         `json:"location" gorm:"type:varchar(500)"`
+	Timestamp   time.Time      `json:"timestamp" gorm:"not null;index"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
