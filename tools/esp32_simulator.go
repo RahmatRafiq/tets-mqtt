@@ -11,7 +11,6 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-// SensorPayload represents the structure of data sent from ESP32 sensors
 type SensorPayload struct {
 	DeviceID        string  `json:"device_id"`
 	FarmName        string  `json:"farm_name"`
@@ -30,7 +29,6 @@ type SensorPayload struct {
 	Timestamp       int64   `json:"timestamp"`
 }
 
-// StatusPayload represents device status updates
 type StatusPayload struct {
 	DeviceID        string  `json:"device_id"`
 	FarmName        string  `json:"farm_name"`
@@ -43,18 +41,15 @@ type StatusPayload struct {
 }
 
 func main() {
-	// MQTT broker configuration
 	brokerURL := "tcp://broker.hivemq.com:1883"
 	clientID := "esp32_simulator_001"
 
-	// Create MQTT client options
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(brokerURL)
 	opts.SetClientID(clientID)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 
-	// Create and connect client
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	if token.Wait() && token.Error() != nil {
@@ -64,7 +59,6 @@ func main() {
 	fmt.Println("ESP32 Simulator connected to MQTT broker")
 	fmt.Println("Simulating sensor data from Sugar Cane plantation...")
 
-	// Simulate multiple devices
 	devices := []struct {
 		ID       string
 		FarmName string
@@ -76,58 +70,51 @@ func main() {
 		{"ESP32_003", "Farm_C", -7.252567, 112.771234},
 	}
 
-	// Send initial device status
 	for _, device := range devices {
 		sendDeviceStatus(client, device.ID, device.FarmName, true)
 		time.Sleep(1 * time.Second)
 	}
 
-	// Continuously send sensor data
-	ticker := time.NewTicker(30 * time.Second) // Send data every 30 seconds
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			for _, device := range devices {
-				sendSensorData(client, device.ID, device.FarmName, device.Lat, device.Lng)
-				time.Sleep(2 * time.Second) // Stagger the sends
-			}
+	for range ticker.C {
+		for _, device := range devices {
+			sendSensorData(client, device.ID, device.FarmName, device.Lat, device.Lng)
+			time.Sleep(2 * time.Second)
 		}
 	}
 }
 
 func sendSensorData(client mqtt.Client, deviceID, farmName string, lat, lng float64) {
-	// Generate realistic sensor data for sugar cane
 	payload := SensorPayload{
 		DeviceID:        deviceID,
 		FarmName:        farmName,
-		Nitrogen:        generateRealisticValue(15, 35, 25),    // Optimal: 20-30 mg/kg
-		Phosphorus:      generateRealisticValue(10, 25, 18),    // Optimal: 15-20 mg/kg
-		Potassium:       generateRealisticValue(120, 200, 160), // Optimal: 150-180 mg/kg
-		Temperature:     generateRealisticValue(25, 32, 28),    // Tropical temperature
-		Humidity:        generateRealisticValue(60, 80, 70),    // Soil humidity %
-		pH:              generateRealisticValue(5.5, 8.5, 6.8), // Optimal: 6.0-8.0
-		Latitude:        lat + (rand.Float64()-0.5)*0.001,      // Small variations
-		Longitude:       lng + (rand.Float64()-0.5)*0.001,      // Small variations
+		Nitrogen:        generateRealisticValue(15, 35, 25),
+		Phosphorus:      generateRealisticValue(10, 25, 18),
+		Potassium:       generateRealisticValue(120, 200, 160),
+		Temperature:     generateRealisticValue(25, 32, 28),
+		Humidity:        generateRealisticValue(60, 80, 70),
+		pH:              generateRealisticValue(5.5, 8.5, 6.8),
+		Latitude:        lat + (rand.Float64()-0.5)*0.001,
+		Longitude:       lng + (rand.Float64()-0.5)*0.001,
 		Location:        fmt.Sprintf("Section %s-%d", farmName[len(farmName)-1:], rand.Intn(5)+1),
-		BatteryLevel:    float64(rand.Intn(40) + 60),           // 60-100%
-		SignalStrength:  rand.Intn(30) - 85,                    // -85 to -55 dBm
+		BatteryLevel:    float64(rand.Intn(40) + 60),
+		SignalStrength:  rand.Intn(30) - 85,
 		FirmwareVersion: "v1.2.3",
 		Timestamp:       time.Now().Unix(),
 	}
 
-	// Occasionally generate alert conditions
-	if rand.Float64() < 0.1 { // 10% chance
+	if rand.Float64() < 0.1 {
 		switch rand.Intn(4) {
 		case 0:
-			payload.Nitrogen = 15 // Low nitrogen
+			payload.Nitrogen = 15
 		case 1:
-			payload.Phosphorus = 12 // Low phosphorus
+			payload.Phosphorus = 12
 		case 2:
-			payload.Potassium = 130 // Low potassium
+			payload.Potassium = 130
 		case 3:
-			payload.pH = 5.2 // Low pH
+			payload.pH = 5.2
 		}
 	}
 
@@ -153,8 +140,8 @@ func sendDeviceStatus(client mqtt.Client, deviceID, farmName string, isOnline bo
 		DeviceID:        deviceID,
 		FarmName:        farmName,
 		IsOnline:        isOnline,
-		BatteryLevel:    float64(rand.Intn(40) + 60), // 60-100%
-		SignalStrength:  rand.Intn(30) - 85,          // -85 to -55 dBm
+		BatteryLevel:    float64(rand.Intn(40) + 60),
+		SignalStrength:  rand.Intn(30) - 85,
 		FirmwareVersion: "v1.2.3",
 		Location:        fmt.Sprintf("Section %s-%d", farmName[len(farmName)-1:], rand.Intn(5)+1),
 		Timestamp:       time.Now().Unix(),
@@ -181,16 +168,14 @@ func sendDeviceStatus(client mqtt.Client, deviceID, farmName string, isOnline bo
 }
 
 func generateRealisticValue(min, max, center float64) float64 {
-	// Generate values with normal distribution around center
-	variance := (max - min) / 6 // 99.7% of values within range
+	variance := (max - min) / 6
 	value := rand.NormFloat64()*variance + center
 
-	// Clamp to min/max range
 	if value < min {
 		value = min
 	} else if value > max {
 		value = max
 	}
 
-	return math.Round(value*100) / 100 // Round to 2 decimal places
+	return math.Round(value*100) / 100
 }

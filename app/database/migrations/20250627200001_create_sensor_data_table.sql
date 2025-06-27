@@ -1,24 +1,25 @@
--- Create sensor_data table for NPK sensor readings
-CREATE TABLE sensor_data (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    device_id VARCHAR(100) NOT NULL,
-    farm_name VARCHAR(100) NOT NULL,
-    nitrogen DECIMAL(8,2) DEFAULT 0,
-    phosphorus DECIMAL(8,2) DEFAULT 0,
-    potassium DECIMAL(8,2) DEFAULT 0,
-    temperature DECIMAL(5,2) DEFAULT 0,
-    humidity DECIMAL(5,2) DEFAULT 0,
-    ph DECIMAL(4,2) DEFAULT 0,
-    latitude DECIMAL(10,8) DEFAULT 0,
-    longitude DECIMAL(11,8) DEFAULT 0,
-    location VARCHAR(255) DEFAULT '',
-    timestamp TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL,
+CREATE TABLE IF NOT EXISTS sensor_data (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT 'Primary key for sensor data records',
+    device_id VARCHAR(100) NOT NULL COMMENT 'Unique identifier for the IoT device',
+    farm_name VARCHAR(100) NOT NULL COMMENT 'Name of the farm where the sensor is located', 
+    nitrogen DECIMAL(8,2) NOT NULL DEFAULT 0.00 COMMENT 'Nitrogen level in mg/kg',
+    phosphorus DECIMAL(8,2) NOT NULL DEFAULT 0.00 COMMENT 'Phosphorus level in mg/kg',
+    potassium DECIMAL(8,2) NOT NULL DEFAULT 0.00 COMMENT 'Potassium level in mg/kg',
+    temperature DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Soil temperature in Celsius',
+    humidity DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Soil humidity percentage',
+    ph DECIMAL(4,2) NOT NULL DEFAULT 0.00 COMMENT 'Soil pH level',
+    latitude DECIMAL(10,8) DEFAULT 0.00000000 COMMENT 'GPS latitude coordinates',
+    longitude DECIMAL(11,8) DEFAULT 0.00000000 COMMENT 'GPS longitude coordinates', 
+    location VARCHAR(255) DEFAULT '' COMMENT 'Section or area description within the farm',
+    timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Timestamp when sensor reading was taken',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Record last update timestamp',
+    deleted_at TIMESTAMP NULL COMMENT 'Soft delete timestamp',
     
-    INDEX idx_device_id (device_id),
-    INDEX idx_farm_name (farm_name),
-    INDEX idx_timestamp (timestamp),
-    INDEX idx_deleted_at (deleted_at)
-);
+    INDEX idx_sensor_data_device_id (device_id) COMMENT 'Index on device_id for filtering by specific device',
+    INDEX idx_sensor_data_farm_name (farm_name) COMMENT 'Index on farm_name for filtering by farm',
+    INDEX idx_sensor_data_timestamp (timestamp) COMMENT 'Index on timestamp for time-based queries',
+    INDEX idx_sensor_data_deleted_at (deleted_at) COMMENT 'Index on deleted_at for soft delete queries',
+    INDEX idx_sensor_data_device_timestamp (device_id, timestamp) COMMENT 'Composite index for device-specific time queries',
+    INDEX idx_sensor_data_farm_timestamp (farm_name, timestamp) COMMENT 'Composite index for farm-specific time queries'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Table storing NPK sensor readings from IoT devices';
