@@ -102,6 +102,7 @@ func RegisterRoutes(route *gin.Engine) {
 	fileRoutes := route.Group("/file")
 	{
 		fileRoutes.GET("/:key/:filename", fileController.ServeFile)
+		fileRoutes.GET("/public/:key/:filename", fileController.ServePublicFile)
 	}
 
 	// Endpoint untuk mengecek kesehatan koneksi facades
