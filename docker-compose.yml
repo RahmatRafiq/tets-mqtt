@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   app:
     build: .
@@ -9,18 +11,18 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - mysql
+      - mariadb
 
-  mysql:
-    image: mysql:latest
+  mariadb:
+    image: mariadb:latest
     restart: always
     env_file:
       - .env
     environment:
-      MYSQL_ROOT_PASSWORD: "${MYSQL_PASS}"
-      MYSQL_DATABASE: "${MYSQL_DB}"
-      MYSQL_USER: "${MYSQL_USER}"
-      MYSQL_PASSWORD: "${MYSQL_PASS}"
+      MARIADB_ROOT_PASSWORD: "${MYSQL_PASS}"
+      MARIADB_DATABASE: "${MYSQL_DB}"
+      MARIADB_USER: "${MYSQL_USER}"
+      MARIADB_PASSWORD: "${MYSQL_PASS}"
     ports:
       - "${DB_FORWARDER_PORT:-3306}:3306"
     volumes:
