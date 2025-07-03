@@ -192,25 +192,99 @@ go clean && go build
 go run main.go 2>&1 | tee app.log
 ```
 
-## 🎯 Expected Output
+## 🔗 Tanda-tanda Koneksi MQTT Berhasil
 
-### Ketika aplikasi berjalan dengan benar:
+### 1. Log Output saat Aplikasi Start
+Ketika aplikasi Golang berhasil terhubung dengan MQTT, Anda akan melihat log berikut:
+
 ```
-2025/07/03 22:06:51 Database connection successfully established
-2025/07/03 22:06:51 Sensor tables migrated successfully
 2025/07/03 22:06:51 Successfully connected to MQTT broker
 2025/07/03 22:06:51 MQTT service initialized successfully
 2025/07/03 22:06:51 MQTT client connected to broker
 2025/07/03 22:06:51 Successfully subscribed to topic: sugar_vestrack/sensor/+/data
 2025/07/03 22:06:51 Successfully subscribed to topic: sugar_vestrack/device/+/status
 2025/07/03 22:06:51 Successfully subscribed to topic: sugar_vestrack/device/+/alert
-Server is running on port 8080
 ```
 
-### Ketika mengirim data MQTT:
+### 2. Tidak Ada Error Message
+Jika koneksi gagal, Anda akan melihat error seperti:
 ```
-2025/07/03 22:13:08 Received sensor data from topic: sugar_vestrack/sensor/device001/data
-2025/07/03 22:13:08 Sensor data saved for device device001
+2025/07/03 22:06:51 Failed to connect to MQTT broker: network Error: dial tcp 127.0.0.1:1883: connect: connection refused
+2025/07/03 22:06:51 MQTT functionality will be disabled
+```
+
+### 3. Test Koneksi Real-time
+Untuk memastikan koneksi benar-benar berfungsi:
+
+```bash
+# Terminal 1: Jalankan aplikasi Golang
+go run main.go
+
+# Terminal 2: Kirim pesan test
+mosquitto_pub -h localhost -t "sugar_vestrack/sensor/test/data" -m '{"deviceId":"test","temperature":25.0,"humidity":60.0,"soilMoisture":45.0,"timestamp":1720027620}'
+
+# Jika berhasil, di Terminal 1 akan muncul:
+# 2025/07/03 22:13:08 Received sensor data from topic: sugar_vestrack/sensor/test/data
+```
+
+### 4. Cek Status Client MQTT
+Aplikasi akan menampilkan status koneksi MQTT:
+
+```bash
+# Status berhasil:
+✅ "MQTT client connected to broker"
+✅ "Successfully subscribed to topic: ..."
+
+# Status gagal:
+❌ "Failed to connect to MQTT broker"
+❌ "MQTT functionality will be disabled"
+```
+
+### 5. Cek Data Masuk ke Database
+Setelah mengirim data via MQTT, cek apakah data tersimpan:
+
+```bash
+# Test API endpoint
+curl -X GET "http://localhost:8080/api/sensor/data" -H "Content-Type: application/json"
+
+# Atau cek langsung di database
+mysql -u rahmat -p -e "USE golang_starter_kit_2025; SELECT * FROM sensor_data ORDER BY created_at DESC LIMIT 3;"
+```
+
+### 6. Monitoring Real-time
+Untuk monitoring koneksi secara real-time:
+
+```bash
+# Terminal monitoring - akan menampilkan semua pesan MQTT
+mosquitto_sub -h localhost -t "sugar_vestrack/+/+/+" -v
+
+# Jika ada pesan masuk, berarti koneksi aktif
+```
+
+### 7. Health Check API
+Cek status aplikasi via API:
+
+```bash
+curl -X GET "http://localhost:8080/health"
+
+# Response berhasil:
+{"status":"ok","timestamp":"2025-07-03T22:06:51Z"}
+```
+
+### 8. Indikator di Code
+Dalam kode `bootstrap/mqtt.go`, fungsi `Connect()` akan return:
+- `nil` jika berhasil → Log: "MQTT service initialized successfully"
+- `error` jika gagal → Log: "Failed to connect to MQTT broker"
+
+### 9. Process Monitoring
+Cek apakah aplikasi subscribe ke topic dengan benar:
+
+```bash
+# Cek proses MQTT client
+ps aux | grep -i mqtt
+
+# Cek koneksi network
+ss -tlnp | grep 1883
 ```
 
 ## 🎉 Status Koneksi
