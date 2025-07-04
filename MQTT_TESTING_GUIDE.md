@@ -1,4 +1,32 @@
-# MQTT Testing Guide
+# Stop Mosquitto service
+sudo systemctl stop mosquitto
+
+# Cek status (pastikan stopped)
+sudo systemctl status mosquitto
+
+# Disable auto-start saat boot (opsional)
+sudo systemctl disable mosquitto# Stop Mosquitto service
+sudo systemctl stop mosquitto
+
+# Cek status (pastikan stopped)
+sudo systemctl status mosquitto
+
+# Disable auto-start saat boot (opsional)
+sudo systemctl disable mosquitto# Stop Mosquitto service
+sudo systemctl stop mosquitto
+
+# Cek status (pastikan stopped)
+sudo systemctl status mosquitto
+
+# Disable auto-start saat boot (opsional)
+sudo systemctl disable mosquitto# Stop Mosquitto service
+sudo systemctl stop mosquitto
+
+# Cek status (pastikan stopped)
+sudo systemctl status mosquitto
+
+# Disable auto-start saat boot (opsional)
+sudo systemctl disable mosquitto# MQTT Testing Guide
 
 ## 🚀 Cara Menjalankan Semua Komponen
 
